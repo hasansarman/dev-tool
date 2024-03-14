@@ -65,7 +65,7 @@ return [
         'beforeRenderLayout' => [
             'default' => function ($theme): void {
                 // $theme->asset()->usePath()->add('ipad', 'css/layouts/ipad.css');
-            }
-        ]
-    ]
+            },
+        ],
+    ],
 ];
