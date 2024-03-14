@@ -5,9 +5,11 @@ namespace Botble\DevTool\Commands;
 use Botble\DevTool\Commands\Abstracts\BaseMakeCommand;
 use Botble\DevTool\Helper;
 use Botble\Theme\Commands\Traits\ThemeTrait;
+use Botble\Theme\Facades\Theme;
 use Botble\Theme\Services\ThemeService;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
 use Illuminate\Filesystem\Filesystem as File;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
@@ -18,10 +20,22 @@ class ThemeCreateCommand extends BaseMakeCommand implements PromptsForMissingInp
 {
     use ThemeTrait;
 
-    public function handle(File $files, ThemeService $themeService): int
+    protected string|null $parentTheme;
+
+    public function __construct(protected ThemeService $themeService)
+    {
+        parent::__construct();
+    }
+
+    public function handle(File $files): int
     {
         $theme = $this->getTheme();
         $path = $this->getPath();
+        $this->parentTheme = $this->option('parent');
+
+        if (! empty($this->parentTheme) && ! $this->isValidParentTheme()) {
+            return static::FAILURE;
+        }
 
         if ($files->isDirectory($path)) {
             $this->components->error(sprintf('Theme "%s" is already exists.', $theme));
@@ -43,8 +57,10 @@ class ThemeCreateCommand extends BaseMakeCommand implements PromptsForMissingInp
         }
 
         $this->searchAndReplaceInFiles($theme, $path);
+
         $this->renameFiles($theme, $path);
-        $themeService->publishAssets($theme);
+
+        $this->themeService->publishAssets($theme);
 
         $this->components->info(sprintf('Theme "%s" has been created.', $theme));
 
@@ -53,7 +69,7 @@ class ThemeCreateCommand extends BaseMakeCommand implements PromptsForMissingInp
 
     public function getStub(): string
     {
-        return Helper::joinPaths([dirname(__DIR__, 2), 'stubs', 'theme']);
+        return Helper::joinPaths([dirname(__DIR__, 2), 'stubs', $this->parentTheme ? 'child-theme' : 'theme']);
     }
 
     public function baseReplacements(string $replaceText): array
@@ -66,12 +82,34 @@ class ThemeCreateCommand extends BaseMakeCommand implements PromptsForMissingInp
         return [
             '{theme}' => strtolower($replaceText),
             '{Theme}' => Str::studly($replaceText),
+            '{parent}' => strtolower($this->parentTheme),
         ];
     }
 
     protected function configure(): void
     {
-        $this->addArgument('name', InputArgument::REQUIRED, 'The theme name that you want to create');
-        $this->addOption('path', null, InputOption::VALUE_REQUIRED, 'Path to theme directory');
+        $this
+            ->addArgument('name', InputArgument::REQUIRED, 'The theme name that you want to create')
+            ->addOption('path', null, InputOption::VALUE_REQUIRED, 'Path to theme directory')
+            ->addOption('parent', null, InputOption::VALUE_REQUIRED, 'Parent theme name (if you want to create a child theme)');
+    }
+
+    protected function isValidParentTheme(): bool
+    {
+        if (! Theme::exists($this->parentTheme)) {
+            $this->components->error(sprintf('Parent theme "%s" does not exist.', $this->parentTheme));
+
+            return false;
+        }
+
+        $config = $this->themeService->getThemeConfig($this->parentTheme);
+
+        if (Arr::has($config, 'inherit') && Arr::get($config, 'inherit')) {
+            $this->components->error(sprintf('Parent theme "%s" does not support child theme.', $this->parentTheme));
+
+            return false;
+        }
+
+        return true;
     }
 }
