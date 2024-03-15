@@ -13,11 +13,18 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use function Laravel\Prompts\confirm;
+use function Laravel\Prompts\multiselect;
+use function Laravel\Prompts\text;
 
 #[AsCommand('cms:plugin:create', 'Create a new plugin.')]
 class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingInput
 {
     use HasPluginNameValidation;
+
+    protected array $componentAvailableOfPlugins = [];
+
+    protected bool $hasCrud = false;
 
     public function handle(): int
     {
@@ -39,7 +46,33 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             return self::FAILURE;
         }
 
+        $components = [
+            'helpers' => 'Helpers',
+            'config' => 'Config',
+            'database' => 'Database',
+            'permissions' => 'Permissions',
+            'translations' => 'Translations',
+            'views' => 'Views',
+            'routes' => 'Routes',
+            'publishing_assets' => 'Publishing assets',
+        ];
+
+        $this->hasCrud = confirm('Do you want to add an example of CRUD?');
+
+        if ($this->hasCrud) {
+            $this->componentAvailableOfPlugins = ['permissions', 'database', 'translations', 'routes'];
+        }
+
+        $this->componentAvailableOfPlugins = [
+            ...$this->componentAvailableOfPlugins,
+            ...multiselect(
+                'Your plugin want have available?',
+                Arr::except($components, $this->componentAvailableOfPlugins)
+            ),
+        ];
+
         $this->publishStubs($this->getStub(), $location);
+
         File::copy(
             Helper::joinPaths([dirname(__DIR__, 2), 'stubs', 'plugin', 'plugin.json']),
             Helper::joinPaths([$location, 'plugin.json'])
@@ -48,7 +81,16 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             Helper::joinPaths([dirname(__DIR__, 2), 'stubs', 'plugin', 'Plugin.stub']),
             Helper::joinPaths([$location, 'src', 'Plugin.php'])
         );
+
+        File::deleteDirectory(Helper::joinPaths([$location, 'src/Providers']));
+
+        $this->publishStubs(
+            Helper::joinPaths([dirname(__DIR__, 2), 'stubs', 'plugin', 'src', 'Providers']),
+            Helper::joinPaths([$location, 'src/Providers']),
+        );
+
         $this->renameFiles($plugin['name'], $location);
+
         $this->searchAndReplaceInFiles($plugin['name'], $location);
         $this->removeUnusedFiles($location);
 
@@ -68,7 +110,59 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
 
     protected function removeUnusedFiles(string $location): void
     {
-        File::delete(Helper::joinPaths([$location, 'composer.json']));
+        $deleteFiles = ['composer.json'];
+        $deleteDirectories = [];
+        $componentAvailableOfPlugins = $this->componentAvailableOfPlugins;
+
+        if (! $this->hasCrud) {
+            $deleteDirectories = ['src/Forms', 'src/Models', 'src/Tables', 'src/Http'];
+        }
+
+        if (! in_array('database', $componentAvailableOfPlugins) || ! $this->hasCrud) {
+            $deleteDirectories[] = 'database';
+        }
+
+        if (! in_array('permissions', $componentAvailableOfPlugins)) {
+            $deleteFiles[] = 'config/permissions.php';
+        }
+
+        if (! in_array('helpers', $componentAvailableOfPlugins)) {
+            $deleteDirectories[] = 'helpers';
+        }
+
+        if (! in_array('translations', $componentAvailableOfPlugins)) {
+            $deleteDirectories[] = 'resources/lang';
+        }
+
+        if (! in_array('views', $componentAvailableOfPlugins)) {
+            $deleteDirectories[] = 'resources/views';
+        }
+
+        if (! in_array('routes', $componentAvailableOfPlugins)) {
+            $deleteDirectories[] = 'routes';
+        }
+
+        foreach ($deleteDirectories as $directory) {
+            $path = Helper::joinPaths([$location, $directory]);
+
+            if (File::exists($path)) {
+                File::deleteDirectory($path);
+            }
+        }
+
+        foreach ($deleteFiles as $file) {
+            $path = Helper::joinPaths([$location, $file]);
+
+            if (File::exists($path)) {
+                File::delete($path);
+            }
+        }
+
+        foreach (File::directories($location) as $directory) {
+            if (empty(File::files($directory)) && empty(File::directories($directory))) {
+                File::deleteDirectory($directory);
+            }
+        }
     }
 
     public function getReplacements(string $replaceText): array
@@ -83,20 +177,21 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             '{Modules}' => ucfirst(Str::plural(Str::snake(str_replace('-', '_', $replaceText)))),
             '{-modules}' => Str::plural($replaceText),
             '{MODULE}' => strtoupper(Str::snake(str_replace('-', '_', $replaceText))),
-            '{Module}' => str($replaceText)
-                ->replace('/', '\\')
-                ->afterLast('\\')
-                ->studly()
-                ->prepend('Botble\\'),
+            '{Module}' => Str::of(str_replace('\\\\', '\\', $this->argument('namespace'))),
             '{PluginId}' => $this->argument('id'),
-            '{PluginName}' => $this->argument('name'),
-            '{PluginNamespace}' => $this->argument('namespace'),
+            '{PluginName}' => ucfirst(str_replace('-', ' ', $this->argument('name'))),
+            '{PluginNamespace}' => Str::of($this->argument('namespace'))->append('\\\\'),
             '{PluginServiceProvider}' => $this->argument('provider'),
             '{PluginAuthor}' => $this->argument('author'),
             '{PluginAuthorURL}' => $this->argument('author_url'),
             '{PluginVersion}' => $this->argument('version'),
             '{PluginDescription}' => $this->argument('description'),
-            '{PluginMiniumumCoreVersion}' => $this->argument('miniumum_core_version'),
+            '{PluginMinimumCoreVersion}' => $this->argument('minimum_core_version'),
+            '{PluginBootProvider}' => $this->bootServiceProviderContent(),
+            '{PluginRegisterLanguage}' => $this->registerAdvancedLanguage(),
+            '{PluginRegisterDashboardMenu}' => $this->registerDashboardMenuContent(),
+            '{PluginServiceProviderImports}' => $this->importsServiceProvider(),
+            '{PluginHandleMethodRemove}' => $this->pluginHandleMethodRemoveContent(),
         ];
     }
 
@@ -111,7 +206,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             ->addArgument('author', InputArgument::OPTIONAL, 'Plugin Author')
             ->addArgument('author_url', InputArgument::OPTIONAL, 'Plugin Author URL')
             ->addArgument('version', InputArgument::OPTIONAL, 'Plugin Version')
-            ->addArgument('miniumum_core_version', InputArgument::OPTIONAL, 'Miniumum Core Version');
+            ->addArgument('minimum_core_version', InputArgument::OPTIONAL, 'Minimum Core Version');
     }
 
     protected function afterPromptingForMissingArguments(InputInterface $input, OutputInterface $output): void
@@ -140,8 +235,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
                 $defaultValue = $this->replaceNamespace($defaultValue);
             }
 
-            $answer = $this->ask(Arr::get($item, 'label'), $defaultValue);
-
+            $answer = text(Arr::get($item, 'label'), default: $defaultValue);
             $input->setArgument($key, $answer);
         }
     }
@@ -177,8 +271,8 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
                 'label' => 'Plugin Version',
                 'default' => '1.0.0',
             ],
-            'miniumum_core_version' => [
-                'label' => 'Plugin Miniumum Core Version',
+            'minimum_core_version' => [
+                'label' => 'Plugin Minimum Core Version',
                 'default' => get_core_version(),
             ],
         ];
@@ -199,12 +293,6 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
 
     protected function validatePluginId(string $id): void
     {
-        if (! preg_match('/^[a-z0-9\-_.\/]+$/i', $id)) {
-            $this->components->error('Only alphabetic characters are allowed.');
-
-            exit(self::FAILURE);
-        }
-
         if (! str_contains($id, '/')) {
             $this->handlerError();
 
@@ -214,8 +302,8 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
         $before = Str::before($id, '/');
         $after = Str::after($id, '/');
 
-        if (! strlen($before) || ! strlen($after)) {
-            $this->handlerError();
+        if ((! preg_match('/^[a-z0-9\-_.\/]+$/i', $before)) || (! preg_match('/^[a-z0-9\-_.\/]+$/i', $after))) {
+            $this->components->error('Only alphabetic characters are allowed.');
 
             exit(self::FAILURE);
         }
@@ -224,5 +312,114 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
     protected function handlerError(): void
     {
         $this->components->error('Plugin ID does not match the pattern: (ex: <vendor>/<name>)');
+    }
+
+    protected function bootServiceProviderContent(): string|null
+    {
+        $componentAvailableOfPlugins = $this->componentAvailableOfPlugins;
+
+        $bootServiceProviderMethods = [];
+
+        if (in_array('helpers', $componentAvailableOfPlugins)) {
+            $bootServiceProviderMethods[] = 'loadHelpers()';
+        }
+
+        if (in_array('permissions', $componentAvailableOfPlugins)) {
+            $bootServiceProviderMethods[] = 'loadAndPublishConfigurations(["permissions"])';
+        }
+
+        if (in_array('translations', $componentAvailableOfPlugins)) {
+            $bootServiceProviderMethods[] = 'loadAndPublishTranslations()';
+        }
+
+        if (in_array('routes', $componentAvailableOfPlugins)) {
+            $bootServiceProviderMethods[] = 'loadRoutes()';
+        }
+
+        if (in_array('views', $componentAvailableOfPlugins) || in_array('publishing_assets', $componentAvailableOfPlugins)) {
+            $bootServiceProviderMethods[] = 'loadAndPublishViews()';
+        }
+
+        if (in_array('database', $componentAvailableOfPlugins)) {
+            $bootServiceProviderMethods[] = 'loadMigrations()';
+        }
+
+        if (! $bootServiceProviderMethods) {
+            return ';';
+        }
+
+        $content = implode(PHP_EOL . str_repeat(' ', 12) . '->', $bootServiceProviderMethods);
+
+        return Str::of($content)
+            ->prepend('->')
+            ->rtrim(PHP_EOL . str_repeat(' ', 12))
+            ->append(';')
+            ->toString();
+    }
+
+    protected function registerAdvancedLanguage(): string|null
+    {
+        if (! $this->hasCrud) {
+            return null;
+        }
+
+        return PHP_EOL . str_repeat(' ', 12)  . sprintf("if (defined('LANGUAGE_ADVANCED_MODULE_SCREEN_NAME')) {
+                \Botble\LanguageAdvanced\Supports\LanguageAdvancedManager::registerModule(%s::class, [
+                    'name',
+                ]);
+            }", Str::studly($this->argument('name')));
+    }
+
+    protected function registerDashboardMenuContent(): string|null
+    {
+        if (! $this->hasCrud) {
+            return null;
+        }
+
+        $rawContent = "DashboardMenu::default()->beforeRetrieving(function () {
+                DashboardMenu::registerItem([
+                    'id' => 'cms-plugins-{-name}',
+                    'priority' => 5,
+                    'parent_id' => null,
+                    'name' => 'plugins/{-name}::{-name}.name',
+                    'icon' => 'fa fa-list',
+                    'url' => route('{-name}.index'),
+                    'permissions' => ['{-name}.index'],
+                ]);
+            });";
+
+        return PHP_EOL . str_repeat(' ', 12) . str_replace('{-name}', $this->argument('name'), $rawContent);
+    }
+
+    protected function importsServiceProvider(): string|null
+    {
+        if (! $this->hasCrud) {
+            return null;
+        }
+
+        $imports = ['Botble\Base\Facades\DashboardMenu'];
+
+        $imports[] = sprintf('%s\Models\%s', str_replace('\\\\', '\\', $this->argument('namespace')), Str::studly($this->argument('name')));
+
+        return Str::of(implode(';' . PHP_EOL . 'use ', $imports))->prepend('use ')->append(';' . PHP_EOL);
+    }
+
+    public function pluginHandleMethodRemoveContent(): string
+    {
+        if (! $this->hasCrud && ! in_array('database', $this->componentAvailableOfPlugins)) {
+            return '//';
+        }
+
+        $content = ["Schema::dropIfExists('{names}')", "Schema::dropIfExists('{names}_translations')"];
+        $rawContent = implode(';' . PHP_EOL . str_repeat(' ', 8), $content);
+
+        return Str::of(
+            str_replace(
+                '{names}',
+                Str::plural(str_replace('-', '_', $this->argument('name'))),
+                $rawContent
+            )
+        )
+            ->append(';');
     }
 }

@@ -9,7 +9,6 @@ class Plugin extends PluginOperationAbstract
 {
     public static function remove(): void
     {
-        Schema::dropIfExists('{names}');
-        Schema::dropIfExists('{names}_translations');
+        {PluginHandleMethodRemove}
     }
 }
