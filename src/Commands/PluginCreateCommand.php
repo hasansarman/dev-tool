@@ -66,7 +66,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
         $this->componentAvailableOfPlugins = [
             ...$this->componentAvailableOfPlugins,
             ...multiselect(
-                'Your plugin want have available?',
+                'Would you like your plugin to be available?',
                 Arr::except($components, $this->componentAvailableOfPlugins)
             ),
         ];
