@@ -9,13 +9,14 @@ use Illuminate\Contracts\Console\PromptsForMissingInput;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+
+use function Laravel\Prompts\confirm;
+use function Laravel\Prompts\text;
+
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
-use function Laravel\Prompts\confirm;
-use function Laravel\Prompts\multiselect;
-use function Laravel\Prompts\text;
 
 #[AsCommand('cms:plugin:create', 'Create a new plugin.')]
 class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingInput
@@ -28,8 +29,6 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
 
     public function handle(): int
     {
-        $this->components->info('Welcome to the Botble plugin generator');
-
         $plugin = [
             'id' => strtolower($this->argument('id')),
             'name' => strtolower($this->argument('name')),
@@ -57,19 +56,18 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             'publishing_assets' => 'Publishing assets',
         ];
 
-        $this->hasCrud = confirm('Do you want to add an example of CRUD?');
+        $this->hasCrud = confirm('Do you want to add CRUD in your plugin?');
 
         if ($this->hasCrud) {
             $this->componentAvailableOfPlugins = ['permissions', 'database', 'translations', 'routes'];
         }
 
-        $this->componentAvailableOfPlugins = [
-            ...$this->componentAvailableOfPlugins,
-            ...multiselect(
-                'Would you like your plugin to be available?',
-                Arr::except($components, $this->componentAvailableOfPlugins)
-            ),
-        ];
+        foreach (Arr::except($components, $this->componentAvailableOfPlugins) as $key => $component) {
+            $answer = confirm(sprintf('Does your plugin have %s?', strtolower(str_replace('_', ' ', $key))));
+            if ($answer) {
+                $this->componentAvailableOfPlugins[] = $key;
+            }
+        }
 
         $this->publishStubs($this->getStub(), $location);
 
@@ -198,7 +196,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
     protected function configure(): void
     {
         $this
-            ->addArgument('id', InputArgument::REQUIRED, 'Plugin ID (ex: botble/example-name)')
+            ->addArgument('id', InputArgument::REQUIRED, 'Your Plugin ID')
             ->addArgument('name', InputArgument::OPTIONAL, 'Plugin Name')
             ->addArgument('description', InputArgument::OPTIONAL, 'Plugin Description')
             ->addArgument('namespace', InputArgument::OPTIONAL, 'Plugin Namespace')
@@ -209,7 +207,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             ->addArgument('minimum_core_version', InputArgument::OPTIONAL, 'Minimum Core Version');
     }
 
-    protected function afterPromptingForMissingArguments(InputInterface $input, OutputInterface $output): void
+    protected function promptForMissingArguments(InputInterface $input, OutputInterface $output): void
     {
         foreach ($this->inputOptions() as $key => $item) {
             $pluginId = Str::after($this->argument('id'), '/');
@@ -217,7 +215,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             $pluginNamespace = Str::studly($pluginId);
             $pluginName = Str::kebab($pluginId);
 
-            $defaultValue = Arr::get($item, 'default');
+            $defaultValue = Arr::get($item, 'default', '');
 
             if (str_contains($defaultValue, '{plugin-name}')) {
                 $defaultValue = str_replace('{plugin-name}', $pluginName, $defaultValue);
@@ -235,44 +233,64 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
                 $defaultValue = $this->replaceNamespace($defaultValue);
             }
 
-            $answer = text(Arr::get($item, 'label'), default: $defaultValue);
+            $answer = text(
+                Arr::get($item, 'label'),
+                Arr::get(
+                    $item,
+                    'placeholder',
+                    ''
+                ),
+                default: $defaultValue,
+                required: Arr::get($item, 'required', false)
+            );
             $input->setArgument($key, $answer);
         }
+
+        parent::promptForMissingArguments($input, $output);
     }
 
     public function inputOptions(): array
     {
         return [
+            'id' => [
+                'label' => 'What is the ID of your plugin?',
+                'placeholder' => 'E.g.: botble/example-plugin',
+                'required' => true,
+            ],
             'name' => [
-                'label' => 'Plugin Name',
+                'label' => 'What is the name of your plugin?',
                 'default' => '{plugin-name}',
+                'required' => true,
             ],
             'description' => [
-                'label' => 'Plugin Description',
+                'label' => 'What is the description of your plugin?',
                 'default' => 'This is a Botble plugin generated by DevTool',
             ],
             'namespace' => [
-                'label' => 'Plugin Namespaces',
+                'label' => 'What is the namespace of your plugin?',
                 'default' => 'Botble/{PluginName}',
             ],
             'provider' => [
-                'label' => 'Plugin Provider',
+                'label' => 'What is the service provider namespace of your plugin?',
                 'default' => '{Namespace}/Providers/{PluginName}ServiceProvider',
             ],
             'author' => [
-                'label' => 'Plugin Author',
+                'label' => 'What is the author name of your plugin?',
                 'default' => '',
+                'placeholder' => 'John Doe',
             ],
             'author_url' => [
-                'label' => 'Plugin Author URL',
+                'label' => 'What is the author URL of your plugin?',
                 'default' => '',
+                'placeholder' => 'https://example.com',
             ],
             'version' => [
-                'label' => 'Plugin Version',
+                'label' => 'What is the version of your plugin?',
                 'default' => '1.0.0',
+                'required' => true,
             ],
             'minimum_core_version' => [
-                'label' => 'Plugin Minimum Core Version',
+                'label' => 'What is the minimum core version required for your plugin?',
                 'default' => get_core_version(),
             ],
         ];
@@ -363,7 +381,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             return null;
         }
 
-        return PHP_EOL . str_repeat(' ', 12)  . sprintf("if (defined('LANGUAGE_ADVANCED_MODULE_SCREEN_NAME')) {
+        return PHP_EOL . str_repeat(' ', 12) . sprintf("if (defined('LANGUAGE_ADVANCED_MODULE_SCREEN_NAME')) {
                 \Botble\LanguageAdvanced\Supports\LanguageAdvancedManager::registerModule(%s::class, [
                     'name',
                 ]);
