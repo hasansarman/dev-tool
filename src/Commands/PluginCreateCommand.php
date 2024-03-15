@@ -3,6 +3,7 @@
 namespace Botble\DevTool\Commands;
 
 use Botble\DevTool\Commands\Abstracts\BaseMakeCommand;
+use Botble\DevTool\Helper;
 use Botble\PluginManagement\Commands\Concern\HasPluginNameValidation;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
 use Illuminate\Support\Arr;
@@ -13,7 +14,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 
-#[AsCommand('cms:plugin:create', 'Create a plugin in the /platform/plugins directory.')]
+#[AsCommand('cms:plugin:create', 'Create a new plugin.')]
 class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingInput
 {
     use HasPluginNameValidation;
@@ -39,8 +40,14 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
         }
 
         $this->publishStubs($this->getStub(), $location);
-        File::copy(__DIR__ . '/../../stubs/plugin/plugin.json', sprintf('%s/plugin.json', $location));
-        File::copy(__DIR__ . '/../../stubs/plugin/Plugin.stub', sprintf('%s/src/Plugin.php', $location));
+        File::copy(
+            Helper::joinPaths([dirname(__DIR__, 2), 'stubs', 'plugin', 'plugin.json']),
+            Helper::joinPaths([$location, 'plugin.json'])
+        );
+        File::copy(
+            Helper::joinPaths([dirname(__DIR__, 2), 'stubs', 'plugin', 'Plugin.stub']),
+            Helper::joinPaths([$location, 'src', 'Plugin.php'])
+        );
         $this->renameFiles($plugin['name'], $location);
         $this->searchAndReplaceInFiles($plugin['name'], $location);
         $this->removeUnusedFiles($location);
@@ -56,12 +63,12 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
 
     public function getStub(): string
     {
-        return __DIR__ . '/../../stubs/module';
+        return Helper::joinPaths([dirname(__DIR__, 2), 'stubs', 'module']);
     }
 
     protected function removeUnusedFiles(string $location): void
     {
-        File::delete(sprintf('%s/composer.json', $location));
+        File::delete(Helper::joinPaths([$location, 'composer.json']));
     }
 
     public function getReplacements(string $replaceText): array
