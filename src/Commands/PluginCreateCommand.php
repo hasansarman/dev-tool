@@ -3,7 +3,6 @@
 namespace Botble\DevTool\Commands;
 
 use Botble\DevTool\Commands\Abstracts\BaseMakeCommand;
-use Botble\PluginManagement\Commands\Concern\HasPluginIdValidation;
 use Botble\PluginManagement\Commands\Concern\HasPluginNameValidation;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
 use Illuminate\Support\Arr;
@@ -18,7 +17,6 @@ use Symfony\Component\Console\Output\OutputInterface;
 class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingInput
 {
     use HasPluginNameValidation;
-    use HasPluginIdValidation;
 
     public function handle(): int
     {
@@ -190,5 +188,34 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
         }
 
         return $namespace;
+    }
+
+    protected function validatePluginId(string $id): void
+    {
+        if (! preg_match('/^[a-z0-9\-_.\/]+$/i', $id)) {
+            $this->components->error('Only alphabetic characters are allowed.');
+
+            exit(self::FAILURE);
+        }
+
+        if (! str_contains($id, '/')) {
+            $this->handlerError();
+
+            exit(self::FAILURE);
+        }
+
+        $before = Str::before($id, '/');
+        $after = Str::after($id, '/');
+
+        if (! strlen($before) || ! strlen($after)) {
+            $this->handlerError();
+
+            exit(self::FAILURE);
+        }
+    }
+
+    protected function handlerError(): void
+    {
+        $this->components->error('Plugin ID does not match the pattern: (ex: <vendor>/<name>)');
     }
 }
