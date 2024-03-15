@@ -3,6 +3,7 @@
 namespace Botble\DevTool\Commands;
 
 use Botble\DevTool\Commands\Abstracts\BaseMakeCommand;
+use Botble\PluginManagement\Commands\Concern\HasPluginIdValidation;
 use Botble\PluginManagement\Commands\Concern\HasPluginNameValidation;
 use Illuminate\Contracts\Console\PromptsForMissingInput;
 use Illuminate\Support\Arr;
@@ -17,6 +18,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingInput
 {
     use HasPluginNameValidation;
+    use HasPluginIdValidation;
 
     public function handle(): int
     {
@@ -25,16 +27,10 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
         $plugin = [
             'id' => strtolower($this->argument('id')),
             'name' => strtolower($this->argument('name')),
-            'description' => $this->argument('description'),
-            'namespaces' => $this->argument('namespace'),
-            'provider' => $this->argument('provider'),
-            'author' => $this->argument('author'),
-            'author_url' => $this->argument('author_url'),
-            'version' => $this->argument('version'),
-            'miniumum_core_version' => $this->argument('miniumum_core_version'),
         ];
 
         $this->validatePluginName($plugin['name']);
+        $this->validatePluginId($plugin['id']);
 
         $location = plugin_path($plugin['name']);
 
@@ -113,7 +109,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             ->addArgument('miniumum_core_version', InputArgument::OPTIONAL, 'Miniumum Core Version');
     }
 
-    protected function afterPromptingForMissingArguments(InputInterface $input, OutputInterface $output)
+    protected function afterPromptingForMissingArguments(InputInterface $input, OutputInterface $output): void
     {
         foreach ($this->inputOptions() as $key => $item) {
             $pluginId = Str::after($this->argument('id'), '/');
@@ -135,6 +131,10 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
                 $defaultValue = str_replace('{Namespace}', $this->argument('namespace'), $defaultValue);
             }
 
+            if (str_contains($defaultValue, '/')) {
+                $defaultValue = $this->replaceNamespace($defaultValue);
+            }
+
             $answer = $this->ask(Arr::get($item, 'label'), $defaultValue);
 
             $input->setArgument($key, $answer);
@@ -154,18 +154,18 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             ],
             'namespace' => [
                 'label' => 'Plugin Namespaces',
-                'default' => 'Botble\\{PluginName}',
+                'default' => 'Botble/{PluginName}',
             ],
             'provider' => [
                 'label' => 'Plugin Provider',
-                'default' => '{Namespace}\\Providers\\{PluginName}ServiceProvider',
+                'default' => '{Namespace}/Providers/{PluginName}ServiceProvider',
             ],
             'author' => [
                 'label' => 'Plugin Author',
                 'default' => '',
             ],
             'author_url' => [
-                'label' => 'Plugin Avatar URL',
+                'label' => 'Plugin Author URL',
                 'default' => '',
             ],
             'version' => [
@@ -177,5 +177,18 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
                 'default' => get_core_version(),
             ],
         ];
+    }
+
+    protected function replaceNamespace(string $namespace): string
+    {
+        if (str_contains($namespace, '/')) {
+            return str_replace('/', '\\\\', $namespace);
+        }
+
+        if (str_contains($namespace, '\\')) {
+            return str_replace('\\', '\\\\', $namespace);
+        }
+
+        return $namespace;
     }
 }
