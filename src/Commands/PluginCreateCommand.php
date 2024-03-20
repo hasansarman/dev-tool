@@ -31,13 +31,12 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
     {
         $plugin = [
             'id' => strtolower($this->argument('id')),
-            'name' => strtolower($this->argument('name')),
+            'name' => $this->argument('name'),
         ];
 
-        $this->validatePluginName($plugin['name']);
         $this->validatePluginId($plugin['id']);
 
-        $location = plugin_path($plugin['name']);
+        $location = plugin_path(Str::of($plugin['id'])->after('/'));
 
         if (File::isDirectory($location)) {
             $this->components->error(sprintf('A plugin named [%s] already exists.', $plugin['name']));
@@ -46,14 +45,14 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
         }
 
         $components = [
-            'helpers' => 'Helpers',
-            'config' => 'Config',
-            'database' => 'Database',
-            'permissions' => 'Permissions',
-            'translations' => 'Translations',
-            'views' => 'Views',
-            'routes' => 'Routes',
-            'publishing_assets' => 'Publishing assets',
+            'helpers' => 'Would you like to use Helper files?',
+            'config' => 'Do you want to use Configs?',
+            'database' => 'Do you need Database?',
+            'permissions' => 'Would you like to use Permissions',
+            'translations' => 'Do you need Translator?',
+            'views' => 'Do you want to use Views?',
+            'routes' => 'Do you need Routes?',
+            'publishing_assets' => 'Do you need Publishing assets?',
         ];
 
         $this->hasCrud = confirm('Do you want to add CRUD in your plugin?');
@@ -62,8 +61,8 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             $this->componentAvailableOfPlugins = ['permissions', 'database', 'translations', 'routes'];
         }
 
-        foreach (Arr::except($components, $this->componentAvailableOfPlugins) as $key => $component) {
-            $answer = confirm(sprintf('Does your plugin have %s?', strtolower(str_replace('_', ' ', $key))));
+        foreach (Arr::except($components, $this->componentAvailableOfPlugins) as $key => $label) {
+            $answer = confirm($label);
             if ($answer) {
                 $this->componentAvailableOfPlugins[] = $key;
             }
@@ -178,8 +177,8 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             '{Module}' => Str::of(str_replace('\\\\', '\\', $this->argument('namespace'))),
             '{PluginId}' => $this->argument('id'),
             '{PluginName}' => ucfirst(str_replace('-', ' ', $this->argument('name'))),
-            '{PluginNamespace}' => Str::of($this->argument('namespace'))->append('\\\\'),
-            '{PluginServiceProvider}' => $this->argument('provider'),
+            '{PluginNamespace}' => Str::of($this->replaceNamespace($this->argument('namespace')))->append('\\\\'),
+            '{PluginServiceProvider}' => Str::of($this->replaceNamespace($this->argument('namespace')))->append('\\\\') . $this->argument('provider'),
             '{PluginAuthor}' => $this->argument('author'),
             '{PluginAuthorURL}' => $this->argument('author_url'),
             '{PluginVersion}' => $this->argument('version'),
@@ -190,6 +189,8 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             '{PluginRegisterDashboardMenu}' => $this->registerDashboardMenuContent(),
             '{PluginServiceProviderImports}' => $this->importsServiceProvider(),
             '{PluginHandleMethodRemove}' => $this->pluginHandleMethodRemoveContent(),
+            '{-name}' => str_replace(' ', '-', strtolower($replaceText)),
+            '{-names}' => Str::plural(str_replace(' ', '-', strtolower($replaceText))),
         ];
     }
 
@@ -213,7 +214,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             $pluginId = Str::after($this->argument('id'), '/');
 
             $pluginNamespace = Str::studly($pluginId);
-            $pluginName = Str::kebab($pluginId);
+            $pluginName = Str::of($pluginId)->title()->replace('-', ' ')->toString();
 
             $defaultValue = Arr::get($item, 'default', '');
 
@@ -253,39 +254,39 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
     {
         return [
             'id' => [
-                'label' => 'What is the ID of your plugin?',
+                'label' => 'Please enter the plugin ID',
                 'placeholder' => 'E.g.: botble/example-plugin',
                 'required' => true,
             ],
             'name' => [
-                'label' => 'What is the name of your plugin?',
+                'label' => 'Name:',
                 'default' => '{plugin-name}',
                 'required' => true,
             ],
             'description' => [
-                'label' => 'What is the description of your plugin?',
-                'default' => 'This is a Botble plugin generated by DevTool',
+                'label' => 'Description: (Optional)',
+                'default' => '',
             ],
             'namespace' => [
-                'label' => 'What is the namespace of your plugin?',
+                'label' => 'Namespace:',
                 'default' => 'Botble/{PluginName}',
             ],
             'provider' => [
-                'label' => 'What is the service provider namespace of your plugin?',
-                'default' => '{Namespace}/Providers/{PluginName}ServiceProvider',
+                'label' => 'ServiceProvider:',
+                'default' => '{PluginName}ServiceProvider',
             ],
             'author' => [
-                'label' => 'What is the author name of your plugin?',
+                'label' => 'Author name: (Optional)',
                 'default' => '',
                 'placeholder' => 'John Doe',
             ],
             'author_url' => [
-                'label' => 'What is the author URL of your plugin?',
+                'label' => 'Author URL: (Optional)',
                 'default' => '',
                 'placeholder' => 'https://example.com',
             ],
             'version' => [
-                'label' => 'What is the version of your plugin?',
+                'label' => 'Version:',
                 'default' => '1.0.0',
                 'required' => true,
             ],
@@ -299,7 +300,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
     protected function replaceNamespace(string $namespace): string
     {
         if (str_contains($namespace, '/')) {
-            return str_replace('/', '\\\\', $namespace);
+            return str_replace('/', '\\', $namespace);
         }
 
         if (str_contains($namespace, '\\')) {
