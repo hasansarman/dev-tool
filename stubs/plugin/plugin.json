@@ -7,5 +7,5 @@
     "url": "{PluginAuthorURL}",
     "version": "{PluginVersion}",
     "description": "{PluginDescription}",
-    "miniumum_core_version": "{PluginMiniumumCoreVersion}"
+    "minimum_core_version": "{PluginMinimumCoreVersion}"
 }
