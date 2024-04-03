@@ -8,7 +8,7 @@ class {Widget}Widget extends AbstractWidget
     public function __construct()
     {
         parent::__construct([
-            'name'        => __('{Widget}'),
+            'name' => __('{Widget}'),
             'description' => __('Widget description'),
         ]);
     }
