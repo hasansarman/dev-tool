@@ -178,7 +178,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             '{PluginId}' => $this->argument('id'),
             '{PluginName}' => ucfirst(str_replace('-', ' ', $this->argument('name'))),
             '{PluginNamespace}' => Str::of($this->replaceNamespace($this->argument('namespace')))->append('\\\\'),
-            '{PluginServiceProvider}' => Str::of($this->replaceNamespace($this->argument('namespace')))->append('\\\\') . $this->argument('provider'),
+            '{PluginServiceProvider}' => Str::of($this->replaceNamespace($this->argument('namespace')))->append('\\\\') . 'Providers\\\\' . $this->argument('provider'),
             '{PluginAuthor}' => $this->argument('author'),
             '{PluginAuthorURL}' => $this->argument('author_url'),
             '{PluginVersion}' => $this->argument('version'),
