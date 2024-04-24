@@ -407,7 +407,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
                 ]);
             });";
 
-        return PHP_EOL . str_repeat(' ', 12) . str_replace('{-name}', $this->argument('name'), $rawContent);
+        return PHP_EOL . str_repeat(' ', 12) . str_replace('{-name}', strtolower($this->argument('name')), $rawContent);
     }
 
     protected function importsServiceProvider(): string|null
