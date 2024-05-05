@@ -65,20 +65,19 @@ class PluginMakeCrudCommand extends BaseMakeCommand implements PromptsForMissing
         $files = [
             Helper::joinPaths(['config', 'permissions.stub']),
             Helper::joinPaths(['routes', 'web.stub']),
+            Helper::joinPaths(['helpers', 'helpers.stub']),
             Helper::joinPaths(['resources', 'views', '.gitkeep']),
             'composer.json',
-            Helper::joinPaths(['src', 'Providers', '{Module}ServiceProvider.stub']),
-            Helper::joinPaths(['src', 'Forms', 'Settings', '{Module}Form.stub']),
-            Helper::joinPaths(['src', 'Http', 'Controllers', 'Settings', '{Module}Controller.stub']),
-            Helper::joinPaths(['src', 'Http', 'Requests', 'Settings', '{Module}Request.stub']),
-            Helper::joinPaths(['src', 'PanelSections', '{Module}PanelSection.stub']),
+            Helper::joinPaths(['src', 'Providers', '{Name}ServiceProvider.stub']),
+            Helper::joinPaths(['src', 'Forms', 'Settings', '{Name}Form.stub']),
+            Helper::joinPaths(['src', 'Http', 'Controllers', 'Settings', '{Name}Controller.stub']),
+            Helper::joinPaths(['src', 'Http', 'Requests', 'Settings', '{Name}Request.stub']),
+            Helper::joinPaths(['src', 'PanelSections', '{Name}PanelSection.stub']),
         ];
 
         foreach ($files as $file) {
             File::delete(Helper::joinPaths([$location, $file]));
         }
-
-        File::deleteDirectory(Helper::joinPaths([$location, 'src', 'PanelSections', '']));
     }
 
     public function getReplacements(string $replaceText): array

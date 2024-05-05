@@ -16,19 +16,19 @@ class {Name}Controller extends BaseController
     {
         $this
             ->breadcrumb()
-            ->add(trans(trans('{types}/{-name}::{-name}.name')), route('{-name}.index'));
+            ->add(trans(trans('{types}/{-module}::{-name}.name')), route('{-name}.index'));
     }
 
     public function index({Name}Table $table)
     {
-        PageTitle::setTitle(trans('{types}/{-name}::{-name}.name'));
+        $this->pageTitle(trans('{types}/{-module}::{-name}.name'));
 
         return $table->renderTable();
     }
 
     public function create()
     {
-        PageTitle::setTitle(trans('{types}/{-name}::{-name}.create'));
+        $this->pageTitle(trans('{types}/{-module}::{-name}.create'));
 
         return {Name}Form::create()->renderForm();
     }
@@ -48,7 +48,7 @@ class {Name}Controller extends BaseController
 
     public function edit({Name} ${+name})
     {
-        PageTitle::setTitle(trans('core/base::forms.edit_item', ['name' => ${+name}->name]));
+        $this->pageTitle(trans('core/base::forms.edit_item', ['name' => ${+name}->name]));
 
         return {Name}Form::createFromModel(${+name})->renderForm();
     }
