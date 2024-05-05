@@ -14,7 +14,7 @@ class {Name}ServiceProvider extends ServiceProvider
         $this
             ->setNamespace('{types}/{-name}')
             {PluginBootProvider}
-        {PluginRegisterLanguage}
-        {PluginRegisterDashboardMenu}
+            {PluginRegisterLanguage}
+            {PluginRegisterDashboardMenu}
     }
 }

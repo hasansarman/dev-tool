@@ -3,7 +3,7 @@
     'name',
 ]);
 
-// Add after this line: Event::listen(RouteMatched::class, function () {
+// Add after this line: DashboardMenu::default()->beforeRetrieving(function () {
 \Botble\Base\Facades\DashboardMenu::registerItem([
     'id' => 'cms-{types}-{-name}',
     'priority' => 0,

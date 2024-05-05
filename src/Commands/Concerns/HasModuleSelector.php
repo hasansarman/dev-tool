@@ -59,7 +59,7 @@ trait HasModuleSelector
 
     public function transformModuleToNamespace(): string
     {
-        return str($this->module)
+        return str($this->getModule())
             ->replace(DIRECTORY_SEPARATOR, '\\')
             ->afterLast('\\')
             ->studly()

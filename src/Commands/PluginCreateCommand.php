@@ -164,8 +164,6 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
 
     public function getReplacements(string $replaceText): array
     {
-        $namespace = Str::of($this->replaceNamespace($this->argument('namespace')))->append('\\\\');
-
         return [
             '{type}' => 'plugin',
             '{types}' => 'plugins',
@@ -179,8 +177,8 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             '{Module}' => Str::of(str_replace('\\\\', '\\', $this->argument('namespace'))),
             '{PluginId}' => $this->argument('id'),
             '{PluginName}' => ucfirst(str_replace('-', ' ', $this->argument('name'))),
-            '{PluginNamespace}' => $namespace,
-            '{PluginServiceProvider}' => $namespace . 'Providers\\\\' . $this->argument('provider'),
+            '{PluginNamespace}' => Str::of($this->replaceNamespace($this->argument('namespace')))->append('\\\\'),
+            '{PluginServiceProvider}' => Str::of($this->replaceNamespace($this->argument('namespace')))->append('\\\\') . 'Providers\\\\' . $this->argument('provider'),
             '{PluginAuthor}' => $this->argument('author'),
             '{PluginAuthorURL}' => $this->argument('author_url'),
             '{PluginVersion}' => $this->argument('version'),
