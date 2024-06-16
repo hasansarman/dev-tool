@@ -1,7 +1,10 @@
 <?php
 
+use Botble\Media\Facades\RvMedia;
+use Botble\Theme\Supports\ThemeSupport;
+
 register_page_template([
-    'default' => 'Default',
+    'default' => __('Default'),
 ]);
 
 register_sidebar([
@@ -11,3 +14,7 @@ register_sidebar([
 ]);
 
 RvMedia::setUploadPathAndURLToPublic();
+
+app()->booted(function () {
+    ThemeSupport::registerSiteCopyright();
+});
