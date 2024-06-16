@@ -1,5 +1,6 @@
 <?php
 
+use Botble\Shortcode\View\View;
 use Botble\Theme\Theme;
 
 return [
@@ -43,14 +44,22 @@ return [
             // });
 
             // You may use this event to set up your assets.
-            $theme->asset()->usePath()->add('style', 'css/style.css');
+
+            $version = get_cms_version();
+
+            $theme->asset()->usePath()->add('style', 'css/style.css', version: $version);
 
             $theme->asset()->container('footer')->add('jquery', 'libraries/jquery.min.js');
 
-            $theme->asset()->container('footer')->usePath()->add('script', 'js/script.js');
+            $theme->asset()->container('footer')->usePath()->add(
+                'script',
+                'js/script.js',
+                ['jquery'],
+                version: $version
+            );
 
             if (function_exists('shortcode')) {
-                $theme->composer(['page', 'post'], function (\Botble\Shortcode\View\View $view) {
+                $theme->composer(['page'], function (View $view) {
                     $view->withShortcodes();
                 });
             }
