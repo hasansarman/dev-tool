@@ -2,7 +2,6 @@
 
 namespace {Module}\Forms;
 
-use Botble\Base\Enums\BaseStatusEnum;
 use Botble\Base\Forms\FormAbstract;
 use Botble\Base\Forms\FieldOptions\NameFieldOption;
 use Botble\Base\Forms\FieldOptions\StatusFieldOption;
