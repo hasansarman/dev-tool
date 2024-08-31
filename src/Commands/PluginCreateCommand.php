@@ -139,6 +139,13 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
             $deleteDirectories[] = 'routes';
         }
 
+        $deleteDirectories = [
+            ...$deleteDirectories,
+            'src/Http/Controllers/Settings',
+            'src/Http/Requests/Settings',
+            'src/Forms/Settings',
+        ];
+
         foreach ($deleteDirectories as $directory) {
             $path = Helper::joinPaths([$location, $directory]);
 
@@ -344,7 +351,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
         }
 
         if (in_array('permissions', $componentAvailableOfPlugins)) {
-            $bootServiceProviderMethods[] = 'loadAndPublishConfigurations(["permissions"])';
+            $bootServiceProviderMethods[] = 'loadAndPublishConfigurations([\'permissions\'])';
         }
 
         if (in_array('translations', $componentAvailableOfPlugins)) {
@@ -401,7 +408,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
                     'priority' => 5,
                     'parent_id' => null,
                     'name' => 'plugins/{-name}::{-name}.name',
-                    'icon' => 'fa fa-list',
+                    'icon' => 'ti ti-box',
                     'url' => route('{-name}.index'),
                     'permissions' => ['{-name}.index'],
                 ]);

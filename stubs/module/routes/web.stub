@@ -1,12 +1,11 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use Botble\Base\Facades\AdminHelper;
+use {Module}\Http\Controllers\{Name}Controller;
+use Illuminate\Support\Facades\Route;
 
-Route::group(['namespace' => '{Module}\Http\Controllers'], function () {
-    AdminHelper::registerRoutes(function () {
-        Route::group(['prefix' => '{-names}', 'as' => '{-name}.'], function () {
-            Route::resource('', '{Name}Controller')->parameters(['' => '{-name}']);
-        });
+AdminHelper::registerRoutes(function () {
+    Route::group(['prefix' => '{-names}', 'as' => '{-name}.'], function () {
+        Route::resource('', {Name}Controller::class)->parameters(['' => '{-name}']);
     });
 });

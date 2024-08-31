@@ -6,6 +6,7 @@ use Botble\Base\Facades\DashboardMenu;
 use Botble\Base\Supports\ServiceProvider;
 use Botble\Base\Traits\LoadAndPublishDataTrait;
 use {Module}\Models\{Name};
+use Botble\LanguageAdvanced\Supports\LanguageAdvancedManager;
 
 class {Name}ServiceProvider extends ServiceProvider
 {
@@ -23,7 +24,7 @@ class {Name}ServiceProvider extends ServiceProvider
             ->loadRoutes();
 
         if (defined('LANGUAGE_ADVANCED_MODULE_SCREEN_NAME')) {
-            \Botble\LanguageAdvanced\Supports\LanguageAdvancedManager::registerModule({Name}::class, [
+            LanguageAdvancedManager::registerModule({Name}::class, [
                 'name',
             ]);
         }

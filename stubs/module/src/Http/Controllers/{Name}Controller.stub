@@ -5,7 +5,6 @@ namespace {Module}\Http\Controllers;
 use Botble\Base\Http\Actions\DeleteResourceAction;
 use {Module}\Http\Requests\{Name}Request;
 use {Module}\Models\{Name};
-use Botble\Base\Facades\PageTitle;
 use Botble\Base\Http\Controllers\BaseController;
 use {Module}\Tables\{Name}Table;
 use {Module}\Forms\{Name}Form;
