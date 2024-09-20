@@ -80,6 +80,7 @@ class PluginCreateCommand extends BaseMakeCommand implements PromptsForMissingIn
         );
 
         File::deleteDirectory(Helper::joinPaths([$location, 'src/Providers']));
+        File::deleteDirectory(Helper::joinPaths([$location, 'src/PanelSections']));
 
         $this->publishStubs(
             Helper::joinPaths([dirname(__DIR__, 2), 'stubs', 'plugin', 'src', 'Providers']),
