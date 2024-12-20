@@ -2,7 +2,8 @@
 
 namespace Botble\DevTool\Providers;
 
-use Botble\Base\Supports\ServiceProvider;
+//use Botble\Base\Supports\ServiceProvider;
+use Illuminate\Support\ServiceProvider;
 use Botble\DevTool\Commands\LocaleCreateCommand;
 use Botble\DevTool\Commands\LocaleRemoveCommand;
 use Botble\DevTool\Commands\Make\ControllerMakeCommand;
