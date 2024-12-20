@@ -2,8 +2,8 @@
 
 namespace Botble\DevTool\Providers;
 
-use Botble\Base\Supports\ServiceProvider;
-
+//use Botble\Base\Supports\ServiceProvider;
+use Illuminate\Support\ServiceProvider;
 class DevToolServiceProvider extends ServiceProvider
 {
     public function boot(): void
